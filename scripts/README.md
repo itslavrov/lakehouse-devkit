@@ -1,189 +1,48 @@
-# Local Lakehouse Platform (MinIO + Nessie + Trino + Airflow)
+## Local Lakehouse – Quick Intro
 
-Автоматизированное развёртывание локальной Lakehouse-платформы на Ubuntu 22.04.
-Подходит для того, чтобы быстро поднять полноценную среду для разработки и тестирования пайплайнов.
+This repository contains two parts:
 
-Платформа включает:
+* **`scripts/`** – automation scripts for installing dependencies, preparing `.env`, pulling the lakehouse repo, and starting/stopping the entire stack.
+* **`lakehouse_repo/`** – the actual lakehouse setup (MinIO, Nessie, Trino, Airflow), including updated Dockerfiles and Compose files.
 
-* **MinIO** - S3-хранилище
-* **Nessie** - каталог Iceberg
-* **Trino** - SQL-движок
-* **Airflow** - оркестратор ETL/ELT
-
-Развёртывание выполняется через набор скриптов и Docker Compose.
-
----
-
-# Скрипты
-
-## **01-install-deps.sh**
-
-Устанавливает:
-
-* Docker CE
-* Docker Compose v2
-* Python3 + pip
-* cryptography
-* git, curl, openssl
-
-Добавляет пользователя в группу `docker`.
-
-**Зачем:** полностью автоматизировать подготовку среды на чистой Ubuntu.
-После выполнения требуется перелогиниться.
-
----
-
-## **02-clone-lakehouse.sh**
-
-Клонирует upstream-репозиторий в `/opt/lakehouse_repo`.
-
----
-
-## **03-generate-env.sh**
-
-Создаёт `.env` со всеми секретами:
-
-* MINIO_ROOT_PASSWORD
-* Airflow Fernet Key
-* Airflow Webserver Secret
-* Airflow Admin Password
-* Trino password
-* Nessie password
-* `AIRFLOW_UID=50000` (для корректной работы compose)
-
-Используются криптостойкие генераторы (`openssl rand -hex`, `Fernet`).
-
----
-
-## **03-regenerate-env.sh**
-
-Полный reset:
-
-* останавливает все сервисы
-* удаляет `.env`
-* генерирует новый
-
-Используется перед “чистым запуском”.
-
----
-
-## **04-start-lakehouse.sh**
-
-Запускает весь стек в нужном порядке:
-
-1. MinIO + Nessie
-2. Trino
-3. Airflow
-
-Дополнительно:
-
-* выполняет `init.sql` в Trino (создаёт схемы `landing/staging/curated`)
-* выводит доступы и пароли
-
----
-
-## **05-stop-lakehouse.sh**
-
-Корректно останавливает:
-
-1. Airflow
-2. Trino
-3. MinIO + Nessie
-
-Удаляет volumes.
-
----
-
-## **06-status-lakehouse.sh**
-
-Показывает состояние всех контейнеров с health-чеками, сгруппировано по сервисам.
-
----
-
-# Изменения в репозитории
-
-## Dockerfile (Airflow)
-
-**Исправлено:**
-
-* pip запускается под `airflow`, а не под root
-* dbt-пакеты устанавливаются корректно
-* устраняются ошибки Airflow при старте
-
----
-
-## docker-compose-airflow.yaml
-
-**Исправлено:**
-
-* добавлена переменная `AIRFLOW_UID=50000`
-* корректная сборка кастомного Airflow-образа
-* вынесены все пароли в `.env`
-
----
-
-## docker-compose-trino.yaml
-
-**Исправлено:**
-
-* корректные пути к конфигам
-* поддержка `.env`
-* единая структура volumes
-
----
-
-## docker-compose-lake.yaml
-
-**Исправлено:**
-
-* убран hardcoded пароль MinIO
-* добавлена поддержка `.env`
-* обновлён entrypoint MinIO
-
----
-
-# Развёртывание 
-
-### **1. Установить зависимости**
-
+### All scripts support the environment variable:
+```bash
+export LAKEHOUSE_HOME=/your/custom/path 
+# default: /opt/lakehouse_repo
 ```
-sudo /opt/scripts/01-install-deps.sh
+### How to Use
+
+1. **Clone the scripts into `/opt/scripts`:**
+
+```bash
+sudo git clone https://github.com/itslavrov/local_lakehouse/tree/main/scripts /opt/scripts
+sudo chmod +x /opt/scripts/*.sh
 ```
 
-Перелогиниться.
+2. **Run the installation and setup scripts step-by-step:**
 
-### **2. Клонировать lakehouse**
-
-```
+```bash
+/opt/scripts/01-install-deps.sh
 /opt/scripts/02-clone-lakehouse.sh
-```
-
-### **3. Сгенерировать .env**
-
-```
-/opt/scripts/03-generate-env.sh
-```
-
-### **4. Запустить стек**
-
-```
+/opt/scripts/03-generate-env.sh   # or 03-regenerate-env.sh to rebuild env
 /opt/scripts/04-start-lakehouse.sh
 ```
 
-### **5. Проверить статус**
+3. **Check status:**
 
+```bash
+/opt/scripts/05-status-lakehouse.sh
 ```
-/opt/scripts/06-status-lakehouse.sh
+
+4. **Stop the stack:**
+
+```bash
+/opt/scripts/06-stop-lakehouse.sh
 ```
 
----
+### What’s Included
 
-# Полный Reset среды
-
-Если нужно пересоздать всё:
-
-```
-/opt/scripts/05-stop-lakehouse.sh
-/opt/scripts/03-regenerate-env.sh
-/opt/scripts/04-start-lakehouse.sh
-```
+* Cleaned & fixed Docker Compose files for MinIO, Nessie, Trino, and Airflow.
+* Improved Dockerfile for Airflow with DBT installation.
+* Automated `.env` generation with secure random secrets.
+* Scripts for full lifecycle automation (install, pull, generate, start, status, stop).

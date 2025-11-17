@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="/opt/lakehouse_repo"
+REPO="${LAKEHOUSE_HOME:-/opt/lakehouse_repo}"
 ENV_FILE="${REPO}/.env"
 
 if [ ! -d "$REPO" ]; then
-  echo "ERROR: Repo not found at $REPO"
+  echo "ERROR: Lakehouse repo not found at: $REPO"
+  echo "Set LAKEHOUSE_HOME or run clone script first."
   exit 1
 fi
 
@@ -22,7 +23,7 @@ print(Fernet.generate_key().decode())
 EOF
 }
 
-echo "Generating .env..."
+echo "Generating new .env at ${ENV_FILE}..."
 
 cat > "$ENV_FILE" <<EOF
 MINIO_ROOT_USER=minioadmin
@@ -46,5 +47,4 @@ AIRFLOW_API_PORT=8081
 AIRFLOW_UID=50000
 EOF
 
-echo ".env created at $ENV_FILE"
-
+echo ".env created at ${ENV_FILE}"

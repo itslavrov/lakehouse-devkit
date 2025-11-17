@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="/opt/lakehouse_repo"
+ROOT_DIR="${LAKEHOUSE_HOME:-/opt/lakehouse_repo}"
 
 if [ ! -d "$ROOT_DIR" ]; then
-  echo "Repo not found at $ROOT_DIR. Run 02-clone-lakehouse.sh first."
+  echo "Lakehouse repo not found at: ${ROOT_DIR}"
+  echo "Set LAKEHOUSE_HOME or run 02-clone-lakehouse.sh first."
   exit 1
 fi
 
 cd "$ROOT_DIR"
 
 if [ ! -f ".env" ]; then
-  echo ".env is missing. Run 03-generate-env.sh first."
+  echo ".env is missing. Run 03-generate-env.sh or 03-regenerate-env.sh first."
   exit 1
 fi
 
@@ -71,4 +72,3 @@ echo "  Password: ${TRINO_PASS}"
 echo
 echo "============================================================"
 echo
-

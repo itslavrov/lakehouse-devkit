@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_URL="https://github.com/alex-belozersky/local_lakehouse.git"
-TARGET_DIR="/opt/lakehouse_repo"
+REPO_URL="https://github.com/itslavrov/local_lakehouse.git"
+TARGET_DIR="${LAKEHOUSE_HOME:-/opt/lakehouse_repo}"
+
+echo "Using lakehouse repo directory: ${TARGET_DIR}"
 
 if ! command -v git >/dev/null 2>&1; then
   echo "git is not installed"
@@ -14,9 +16,9 @@ if [ -d "$TARGET_DIR/.git" ]; then
   git -C "$TARGET_DIR" fetch --all --prune
   git -C "$TARGET_DIR" pull --rebase
 else
-  echo "Cloning repo into $TARGET_DIR..."
+  echo "Cloning repo into ${TARGET_DIR}..."
+  mkdir -p "$(dirname "${TARGET_DIR}")"
   git clone "$REPO_URL" "$TARGET_DIR"
 fi
 
-echo "Repo ready at $TARGET_DIR"
-
+echo "Repo ready at ${TARGET_DIR}"

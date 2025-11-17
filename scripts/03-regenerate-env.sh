@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="/opt/lakehouse_repo"
+REPO="${LAKEHOUSE_HOME:-/opt/lakehouse_repo}"
 ENV_FILE="${REPO}/.env"
+GENERATE_ENV_SCRIPT="${LAKEHOUSE_SCRIPTS_HOME:-/opt/scripts}/03-generate-env.sh"
 
 if [ ! -d "$REPO" ]; then
-  echo "ERROR: Repo not found at $REPO"
+  echo "ERROR: Lakehouse repo not found at: $REPO"
+  echo "Set LAKEHOUSE_HOME or run clone script first."
   exit 1
 fi
 
@@ -20,7 +22,7 @@ if [ -f "$ENV_FILE" ]; then
 fi
 
 echo "Generating new .env..."
-/opt/scripts/03-generate-env.sh
+"$GENERATE_ENV_SCRIPT"
 
 echo
 echo "New .env generated:"
@@ -28,7 +30,7 @@ echo "-----------------------------------------"
 cat "$ENV_FILE"
 echo "-----------------------------------------"
 
-echo "Env regeneration completed. You can now run:"
-echo "  /opt/scripts/04-start-lakehouse.sh"
+echo "Environment regeneration completed."
+echo "Start the lakehouse stack with:"
+echo "  ${LAKEHOUSE_SCRIPTS_HOME:-/opt/scripts}/04-start-lakehouse.sh"
 echo
-
