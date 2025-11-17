@@ -3,7 +3,7 @@ services:
     image: trinodb/trino:476
     container_name: trino-coordinator
     ports:
-      - "8080:8080"
+      - "${TRINO_PORT:-8080}:8080"
     volumes:
       - ./trino_config/coordinator/config.properties:/etc/trino/config.properties
       - ./trino_config/catalog:/etc/trino/catalog
@@ -26,3 +26,4 @@ services:
       - ./trino_config/catalog:/etc/trino/catalog
     depends_on:
       - trino-coordinator
+

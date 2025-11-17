@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPTS_DIR="/opt/scripts"
+
+run() {
+  local script="$1"
+  shift || true
+  if [ ! -x "${SCRIPTS_DIR}/${script}" ]; then
+    echo "Script ${SCRIPTS_DIR}/${script} not found or not executable"
+    exit 1
+  fi
+  "${SCRIPTS_DIR}/${script}" "$@"
+}
+
+CMD="${1:-help}"
+
+case "$CMD" in
+  install)
+    run 01-install-deps.sh
+    ;;
+  bootstrap)
+    run 02-clone-lakehouse.sh
+    run 03-generate-env.sh
+    ;;
+  start)
+    run 04-start-lakehouse.sh
+    ;;
+  status)
+    run 05-status-lakehouse.sh
+    ;;
+  up)
+    run 02-clone-lakehouse.sh
+    run 03-generate-env.sh
+    run 04-start-lakehouse.sh
+    run 05-status-lakehouse.sh
+    ;;
+  *)
+    echo "lakehousectl usage:"
+    echo "  lakehousectl install   # 01 - установить Docker и зависимости (один раз, с sudo)"
+    echo "  lakehousectl bootstrap # 02+03 - клонировать репу и создать .env"
+    echo "  lakehousectl start     # 04 - стартовать lakehouse"
+    echo "  lakehousectl status    # 05 - показать статус сервисов"
+    echo "  lakehousectl up        # 02+03+04+05 - полный цикл без установки зависимостей"
+    ;;
+esac
+
