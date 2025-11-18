@@ -1,0 +1,31 @@
+# Terraform local directories
+.terraform/
+.terraform.tfstate.lock.info
+
+# Terraform state files (sensitive)
+terraform.tfstate
+terraform.tfstate.*
+*.tfstate
+*.tfstate.*
+
+# Terraform variable files
+terraform.tfvars
+*.tfvars
+*.auto.tfvars
+
+# Provider lock file
+.terraform.lock.hcl
+
+# Credentials / auth
+auth.tf
+*auth*.tf
+
+# Local SSH keys (in case someone exports them here)
+id_*
+*.pem
+*.key
+
+# OS/editor noise
+.DS_Store
+*.swp
+*.bak
