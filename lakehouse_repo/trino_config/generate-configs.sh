@@ -25,12 +25,9 @@ discovery.uri=http://trino-coordinator:8080
 
 http-server.authentication.type=PASSWORD
 http-server.authentication.allow-insecure-over-http=true
-web-ui.authentication.type=FORM
 
 internal-communication.shared-secret=${TRINO_INTERNAL_SECRET}
 internal-communication.https.required=false
-
-password-authenticator.config-files=/etc/trino/password-authenticator.properties
 EOF
 
 cat > "$SCRIPT_DIR/worker/config.properties" <<EOF
