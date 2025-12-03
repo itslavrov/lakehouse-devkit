@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="${LAKEHOUSE_HOME:-/opt/lakehouse_repo}"
+HOST_IP="$(hostname -I | awk '{print $1}')"
+echo "DEBUG: hostname -I returns: $(hostname -I)"
+echo "DEBUG: HOST_IP is: $HOST_IP"
+
+BASE_DIR="${LAKEHOUSE_HOME:-/opt}"
+ROOT_DIR="${BASE_DIR%/}/lakehouse_repo"
 
 if [ ! -d "$ROOT_DIR" ]; then
   echo "Lakehouse repo not found at: ${ROOT_DIR}"
@@ -12,7 +17,7 @@ fi
 cd "$ROOT_DIR"
 
 if [ ! -f ".env" ]; then
-  echo ".env is missing. Run 03-generate-env.sh or 03-regenerate-env.sh first."
+  echo ".env is missing. Run 03-generate-env.sh first."
   exit 1
 fi
 
@@ -56,19 +61,18 @@ echo " LAKEHOUSE STARTED"
 echo "============================================================"
 echo
 echo "MinIO:"
-echo "  URL:      http://localhost:9001"
+echo "  URL:      http://${HOST_IP}:9001"
 echo "  User:     ${MINIO_USER}"
 echo "  Password: ${MINIO_PASS}"
 echo
 echo "Airflow:"
-echo "  URL:      http://localhost:${AIRFLOW_API_PORT_VALUE}"
+echo "  URL:      http://${HOST_IP}:${AIRFLOW_API_PORT_VALUE}"
 echo "  User:     ${AIRFLOW_USER}"
 echo "  Password: ${AIRFLOW_PASS}"
 echo
 echo "Trino Coordinator:"
-echo "  URL:      http://localhost:${TRINO_PORT_VALUE}"
+echo "  URL:      http://${HOST_IP}:${TRINO_PORT_VALUE}"
 echo "  User:     ${TRINO_USER}"
 echo "  Password: ${TRINO_PASS}"
 echo
 echo "============================================================"
-echo
