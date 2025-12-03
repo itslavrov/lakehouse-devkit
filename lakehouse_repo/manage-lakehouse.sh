@@ -3,10 +3,17 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-PASSWORD_SCRIPT="${SCRIPT_DIR}/trino_config/create-password-db.sh"
-if [ -f "$PASSWORD_SCRIPT" ] && [ ! -x "$PASSWORD_SCRIPT" ]; then
-    chmod +x "$PASSWORD_SCRIPT"
-fi
+SCRIPTS_TO_CHECK=(
+  "trino_config/create-password-db.sh"
+  "trino_config/generate-configs.sh"
+)
+
+for script in "${SCRIPTS_TO_CHECK[@]}"; do
+  SCRIPT_PATH="${SCRIPT_DIR}/${script}"
+  if [ -f "$SCRIPT_PATH" ] && [ ! -x "$SCRIPT_PATH" ]; then
+    chmod +x "$SCRIPT_PATH" || true
+  fi
+done
 
 load_env() {
   ENV_FILE="${SCRIPT_DIR}/.env"
@@ -23,6 +30,7 @@ load_env() {
 
   TRINO_USERNAME="${TRINO_USERNAME:-trino}"
   TRINO_PASSWORD="${TRINO_PASSWORD:-trino}"
+  TRINO_INTERNAL_SECRET="${TRINO_INTERNAL_SECRET:-}"
 
   TRINO_PORT="${TRINO_PORT:-8080}"
   AIRFLOW_API_PORT="${AIRFLOW_API_PORT:-8081}"
@@ -33,6 +41,13 @@ start_services() {
 
   cd "$SCRIPT_DIR"
 
+  echo "Generating Trino configuration files..."
+  if [ -f "./trino_config/generate-configs.sh" ]; then
+    ./trino_config/generate-configs.sh
+  else
+    echo "Warning: generate-configs.sh not found, using existing configs"
+  fi
+
   echo "Creating Trino password file..."
   ./trino_config/create-password-db.sh
 
@@ -42,8 +57,23 @@ start_services() {
 
   echo "Starting Trino query engine..."
   docker compose -f docker-compose-trino.yaml up -d
-  sleep 30
+  
+  echo "Waiting for Trino to start (45 seconds)..."
+  sleep 45
 
+  echo "Initializing Trino schemas..."
+  load_env
+  if docker ps | grep -q trino-coordinator; then
+    docker exec trino-coordinator trino \
+      --server http://localhost:8080 \
+      --user "$TRINO_USERNAME" \
+      --password "$TRINO_PASSWORD" \
+      --file /etc/trino/init.sql
+    echo "Trino schemas initialized successfully."
+  else
+    echo "Warning: Trino coordinator not running, skipping schema initialization"
+  fi
+  
   echo "Starting Airflow orchestration services..."
   docker compose -f docker-compose-airflow.yaml up -d
   sleep 5
@@ -52,23 +82,24 @@ start_services() {
 
   echo "All services started successfully."
 }
-init_trino() {
-  echo "Initializing Trino schemas..."
-  docker exec trino-coordinator trino --catalog iceberg --file /etc/trino/init.sql
-  echo "Schemas (landing, staging, curated) created in Trino Iceberg Catalog."
-  echo
-}
 
 load_dbt_seed_data() {
   echo "Loading CSV seed data via dbt..."
   
-  export TRINO_USERNAME="${TRINO_USERNAME:-trino}"
-  export TRINO_PASSWORD="${TRINO_PASSWORD:-trino}"
+  load_env
+  export TRINO_USERNAME="$TRINO_USERNAME"
+  export TRINO_PASSWORD="$TRINO_PASSWORD"
   
-  dbt seed --project-dir ./dags/dbt_trino --profiles-dir ./dags/dbt_trino
-  echo "CSV files loaded to landing schema via dbt."
+  if command -v dbt >/dev/null 2>&1; then
+    dbt seed --project-dir ./dags/dbt_trino --profiles-dir ./dags/dbt_trino
+    echo "CSV files loaded to landing schema via dbt."
+  else
+    echo "Error: dbt not found in PATH"
+    exit 1
+  fi
   echo
 }
+
 stop_services() {
   echo "Stopping Local Lakehouse services..."
 
@@ -87,6 +118,40 @@ stop_services() {
   echo
 }
 
+show_info() {
+  load_env
+  
+  HOST_IP="$(hostname -I | awk '{print $1}')"
+  if [ -z "$HOST_IP" ] || [[ "$HOST_IP" =~ ^127\. ]] || [[ "$HOST_IP" =~ ^172\.17\. ]]; then
+    HOST_IP="localhost"
+  fi
+  
+  echo "Lakehouse Services Information:"
+  echo "==============================="
+  echo
+  echo "MinIO Console:"
+  echo "  Network:    http://${HOST_IP}:9001"
+  echo "  User:       ${MINIO_ROOT_USER}"
+  echo "  Password:   ${MINIO_ROOT_PASSWORD}"
+  echo
+  echo "Trino Web UI:"
+  echo "  Network:    http://${HOST_IP}:${TRINO_PORT}"
+  echo "  User:       ${TRINO_USERNAME}"
+  echo "  Password:   ${TRINO_PASSWORD}"
+  echo "  Note:       Password authentication enabled"
+  echo
+  echo "Airflow Web UI:"
+  echo "  Network:    http://${HOST_IP}:${AIRFLOW_API_PORT}"
+  echo "  User:       ${AIRFLOW_USERNAME}"
+  echo "  Password:   ${AIRFLOW_PASSWORD}"
+  echo
+  echo "Nessie API:"
+  echo "  URL:        http://${HOST_IP}:19120"
+  echo "  User:       ${NESSIE_USERNAME:-nessie}"
+  echo "  Password:   ${NESSIE_PASSWORD}"
+  echo
+}
+
 case "${1:-help}" in
   start)
     start_services
@@ -94,19 +159,12 @@ case "${1:-help}" in
   stop)
     stop_services
     ;;
+  seed)
+    load_dbt_seed_data
+    ;;
+  info)
+    show_info
+    ;;
   *)
-    echo "Local Lakehouse Management Script"
-    echo
-    echo "Usage: $0 [start|stop]"
-    echo
-    echo "Commands:"
-    echo "  start    Start all lakehouse services (MinIO, Nessie, Trino, Airflow)"
-    echo "  stop     Stop all services and clean up volumes"
-    echo
-    echo "After starting, you can access:"
-    echo "  - MinIO Console:  http://localhost:9001"
-    echo "  - Trino Web UI:   http://localhost:\${TRINO_PORT:-8080}"
-    echo "  - Airflow Web UI: http://localhost:\${AIRFLOW_API_PORT:-8081}"
     ;;
 esac
-

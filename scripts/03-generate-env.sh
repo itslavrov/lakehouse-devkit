@@ -39,6 +39,8 @@ AIRFLOW_PASSWORD=$(random_hex)
 TRINO_USERNAME=trino
 TRINO_PASSWORD=$(random_hex)
 
+TRINO_INTERNAL_SECRET=$(random_hex)
+
 NESSIE_USERNAME=nessie
 NESSIE_PASSWORD=$(random_hex)
 
