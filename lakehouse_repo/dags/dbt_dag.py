@@ -41,5 +41,4 @@ with DAG(
     )
 
     
-    # Define the task dependencies
     dbt_seed_task >> dbt_run_task
